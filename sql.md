@@ -44,4 +44,20 @@
   Entry.objects.get(headline__contains='Lennon')
   ```
 * startswith,endswith：分别以搜索开始和结束。还有一些不区分大小写的版本叫做istartswith和 iendswith。
-
+* 跨关系查找：要跨越关系，只需使用跨模型的相关字段的字段名称，用双下划线分隔，直到到达所需的字段。这个例子检索所有Entry与对象Blog，其name 为：'Beatles Blog'：
+  ```
+  Entry.objects.filter(blog__name='Beatles Blog')
+  ```
+* 跨越多值关系：类名__属性__表达式
+  ```
+  Blog.objects.filter(entry__headline__contains='Lennon', entry__pub_date__year=2008) #选择所有包含标题中包含“Lennon”且2008年发布的条目的博客（同时满足两个条件）
+  Blog.objects.filter(entry__headline__contains='Lennon').filter(entry__pub_date__year=2008) #选择标题 中包含“Lennon”条目的所有博客以及 2008年发布的条目（满足两个条件中的一个）
+  ```
+* from django.db.models import F
+  ```
+  Entry.objects.filter(authors__name=F('blog__name')) #跨字段比对
+  Entry.objects.filter(n_comments__gt=F('n_pingbacks') * 2) #支持加减乘除幂运算
+  from datetime import timedelta
+  Entry.objects.filter(mod_date__gt=F('pub_date') + timedelta(days=3)) #返回在发布后超过3天内修改的所有条目
+  ```
+* 
