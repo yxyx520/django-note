@@ -53,11 +53,69 @@
   Blog.objects.filter(entry__headline__contains='Lennon', entry__pub_date__year=2008) #选择所有包含标题中包含“Lennon”且2008年发布的条目的博客（同时满足两个条件）
   Blog.objects.filter(entry__headline__contains='Lennon').filter(entry__pub_date__year=2008) #选择标题 中包含“Lennon”条目的所有博客以及 2008年发布的条目（满足两个条件中的一个）
   ```
-* from django.db.models import F
+* 使用F对象进行跨字段比对
   ```
+  from django.db.models import F
   Entry.objects.filter(authors__name=F('blog__name')) #跨字段比对
   Entry.objects.filter(n_comments__gt=F('n_pingbacks') * 2) #支持加减乘除幂运算
   from datetime import timedelta
   Entry.objects.filter(mod_date__gt=F('pub_date') + timedelta(days=3)) #返回在发布后超过3天内修改的所有条目
   ```
-* 
+* pk主键查询
+  ```
+  Blog.objects.get(id__exact=14) # Explicit form
+  Blog.objects.get(id=14) # __exact is implied
+  Blog.objects.get(pk=14) # pk implies id__exact
+  Blog.objects.filter(pk__in=[1,4,7])
+  Blog.objects.filter(pk__gt=14)
+  Entry.objects.filter(blog__id__exact=3) # Explicit form
+  Entry.objects.filter(blog__id=3)        # __exact is implied
+  Entry.objects.filter(blog__pk=3)        # __pk implies __id__exact
+  ```
+* 利用缓存减少对数据库的访问
+  ```
+  #全局查询使用缓存
+  queryset = Entry.objects.all()
+  print([p.headline for p in queryset]) # Evaluate the query set.
+  print([p.pub_date for p in queryset]) # Re-use the cache from the evaluation.
+  #切片查询不使用缓存
+  queryset = Entry.objects.all()
+  print(queryset[5]) # Queries the database
+  print(queryset[5]) # Queries the database again
+  #评估整个查询集之后使用缓存
+  queryset = Entry.objects.all()
+  [entry for entry in queryset] # Queries the database
+  print(queryset[5]) # Uses cache
+  print(queryset[5]) # Uses cache
+  #评估整个查询集的操作
+  [entry for entry in queryset]
+  bool(queryset)
+  entry in queryset
+  list(queryset)
+  ```
+* 使用Q对象进行复杂查找
+  ```
+  Q(question__startswith='Who') | Q(question__startswith='What') #以Who或者What开头
+  Q(question__startswith='Who') & Q(question__endwith='What') #以Who开头并且What结尾
+  Q(question__startswith='Who') | ~Q(pub_date__year=2005) #以Who或者不等于2005年
+  ``` 
+  ```
+  Poll.objects.get(
+    Q(question__startswith='Who'),
+    Q(pub_date=date(2005, 5, 2)) | Q(pub_date=date(2005, 5, 6))
+  )
+  等价于：
+  SELECT * from polls WHERE question LIKE 'Who%'
+    AND (pub_date = '2005-05-02' OR pub_date = '2005-05-06')
+  ```
+* 比较对象
+  ```
+  some_entry == other_entry
+  some_entry.id == other_entry.id
+  ```
+* 删除对象
+  ```
+  Entry.objects.all().delete() #删除所有对象
+  Entry.objects.filter(pub_date__year=2005).delete() #删除2005年发布的对象
+  ```
+
